@@ -1,6 +1,6 @@
 ---
 title: "Project 1"
-author: "GROUP MEMBERS"
+author: "Christian Bade"
 output: html_document
 ---
 
@@ -8,6 +8,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(lubridate)
+library(readr)
 ```
 
 ## Overview
@@ -29,6 +30,21 @@ Your job in this project falls into two categories:
     * Call the first table `daily`: "./data/natural_gas_germany_daily.csv"
     * Call the second table `gas`: "./data/dutch_ttf_natural_gas.csv". Be sure to properly import the `Date` column.
     * Demonstrate that these have been loaded by showing the number of rows and columns in each table.
+    
+    
+```{r}
+daily <- read_csv("./data/natural_gas_germany_daily.csv")
+
+gas <- read_csv("./data/dutch_ttf_natural_gas.csv", col_types = cols(Date = col_date()))
+
+dim(daily)
+nrow(daily)
+ncol(daily)
+
+dim(gas)
+nrow(gas)
+ncol(gas)
+```
   
 ```{r}
 daily <- read_csv("./data/natural_gas_germany_daily.csv")
