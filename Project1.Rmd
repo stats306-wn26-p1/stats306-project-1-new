@@ -30,7 +30,14 @@ Your job in this project falls into two categories:
     * Call the second table `gas`: "./data/dutch_ttf_natural_gas.csv". Be sure to properly import the `Date` column.
     * Demonstrate that these have been loaded by showing the number of rows and columns in each table.
   
+```{r}
+daily <- read_csv("./data/natural_gas_germany_daily.csv")
+gas <- read_csv("./data/dutch_ttf_natural_gas.csv") %>%
+  mutate(Date = as.Date(Date, format = "%m/%d/%Y"))
 
+dim(daily)
+dim(gas)
+```
 ### Task 2
 
 * The data in `daily` are collected over days, with information on different types of natural gas consumption (`consumption_small`, `consumption_industry`, `consumption_power`). Provide summaries of typical values for each of these three types of consumption.
