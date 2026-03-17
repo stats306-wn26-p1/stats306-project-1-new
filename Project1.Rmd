@@ -9,6 +9,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(lubridate)
 library(readr)
+library(ggplot2)
 ```
 
 ## Overview
@@ -101,7 +102,26 @@ Produce plots that show the same information that is presented in this plot. You
 
 * Write a predicate function that returns true if any value in vector is missing. Use this function to find columns with missing values in the `daily` column. Create a plot or table that shows how often patterns of missingness occur: are all of the missing values in the same rows or are the various columns missing data in different ways?
 
+```{r}
+any_missing <- function(x) {
+  any(is.na(x))
+}
 
+# Finding columns with missing values
+cols_with_na <- sapply(daily, any_missing)
+# cols_with_na
+
+missing_matrix <- is.na(daily)
+
+missing_pattern <- apply(missing_matrix, 1, function(row) paste(as.integer(row), collapse = ""))
+
+## NOW count how many times each pattern happens
+pattern_table <- table(missing_pattern)
+pattern_table
+
+```
+
+"Missing no data" is vastly the most common. We can see that the rows missing data are largely missing data in the same way.
 
 ### Task 6
 
