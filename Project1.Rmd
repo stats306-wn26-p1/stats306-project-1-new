@@ -58,6 +58,11 @@ dim(gas)
 
 * The data in `daily` are collected over days, with information on different types of natural gas consumption (`consumption_small`, `consumption_industry`, `consumption_power`). Provide summaries of typical values for each of these three types of consumption.
 
+```{r}
+daily %>%
+  select(consumption_small, consumption_industry, consumption_power) %>%
+  summary()
+```
 
 ### Task 3
 
