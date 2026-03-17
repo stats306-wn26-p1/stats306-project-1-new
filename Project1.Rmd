@@ -73,6 +73,24 @@ Answer some questions about the data in `daily`:
 * What proportion of the days are marked as holidays?
 * For each month in each year, what was the year-month combination with the lowest median `consumption_power` value?
    
+```{r}
+#weeks covered 
+daily %>%
+  summarise(
+    weeks = as.numeric(difftime(max(date), min(date), units = "weeks"))
+  )
+
+```
+
+```{r}
+# percent change (last day - first day ) / first day
+daily %>%
+  summarise(
+    small_change = (last(consumption_small) - first(consumption_small)) / first(consumption_small),
+    industry_change = (last(consumption_industry) - first(consumption_industry)) / first(consumption_industry),
+    power_change = (last(consumption_power) - first(consumption_power)) / first(consumption_power)
+  )
+```
 ### Task 4
 
 * The original paper aggregated the data to monthly means for each consumption type in `daily` and the `Price` column of `gas` to produce the following image:<br/>
