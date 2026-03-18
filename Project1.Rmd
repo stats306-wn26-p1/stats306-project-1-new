@@ -127,6 +127,23 @@ pattern_table
 
 * Limit the `gas` table to days where the price exceeded the yearly median. Use the concept of [circular means](https://en.wikipedia.org/wiki/Circular_mean) to compute the average day of the year when price exceeds the yearly median price. The `yday` function will likely be useful here. 
 
+```{r}
+med_price <- median(gas$Price, na.rm = TRUE)
+
+gas_hi <- gas |> filter(Price > med_price) |> mutate(theta = 2 * pi * yday(Date) / 365)
+
+mean_theta <- atan2(mean(sin(gas_hi$theta)), mean(cos(gas_hi$theta)))
+
+if (mean_theta < 0) {
+  mean_theta <- mean_theta + 2*pi
+}
+
+mean_yday <- (mean_theta / (2 * pi)) * 365
+
+
+mean_yday
+```
+
 
 ### Task 7
 
