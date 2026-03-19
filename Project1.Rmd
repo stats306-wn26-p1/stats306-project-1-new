@@ -114,7 +114,38 @@ daily %>%
 Produce plots that show the same information that is presented in this plot. Your plots do not have to have the same colors or markings, but we should be able to use them to compare the trends for the three price variables. 
 
 ```{r}
+combined <- daily_month %>%
+  left_join(gas_month, by = "month")
 
+scale_factor <- max(combined$small, na.rm = TRUE) / max(combined$price, na.rm = TRUE)
+
+ggplot(combined, aes(x = month)) +
+  
+  geom_line(aes(y = price * scale_factor, color = "TTF Price"), size = 1) +
+  
+  geom_line(aes(y = small, color = "Households"), size = 1) +
+  
+  geom_line(aes(y = industry, color = "Industry"), linetype = "dashed", size = 1) +
+  
+
+  scale_y_continuous(
+    name = "Consumption",
+    sec.axis = sec_axis(~./scale_factor, name = "Gas Price")
+  ) +
+  
+  scale_color_manual(values = c(
+    "TTF Price" = "pink",
+    "Households" = "lightblue",
+    "Industry" = "lightblue"
+  )) +
+  
+  labs(
+    title = "Natural Gas Consumption and Price Over Time",
+    x = "Date",
+    color = ""
+  ) +
+  
+  theme_minimal()
 ```
 
 ### Task 5
