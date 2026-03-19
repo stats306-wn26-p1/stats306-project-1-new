@@ -114,6 +114,11 @@ daily %>%
 Produce plots that show the same information that is presented in this plot. Your plots do not have to have the same colors or markings, but we should be able to use them to compare the trends for the three price variables. 
 
 ```{r}
+
+daily |> select(daily$month, daily$small, daily$industry, daily$power) -> daily_month
+
+gas |> select(gas$month, gas$price) -> gas_month
+
 combined <- daily_month %>%
   left_join(gas_month, by = "month")
 
@@ -199,12 +204,71 @@ mean_yday
 
 * Using the cut function, create two nominal variables from quantitative data in the `daily` dataset. Use these groups to summarize the data. Use arrange to show the smallest or largest values in these comparisons.
 
+```{r}
+daily_task7 <- daily %>%
+  mutate(
+    temp_category = cut(temperature,
+                        breaks = 3,
+                        labels = c("Cold", "Mild", "Warm")),
+    industry_level = cut(consumption_industry,
+                         breaks = quantile(consumption_industry, probs = seq(0, 1, 0.25), na.rm = TRUE),
+                         include.lowest = TRUE,
+                         labels = c("Very Low", "Low", "High", "Very High"))
+  )
+
+summary_task7 <- daily_task7 %>%
+  # Filter out the rows where the cut function couldn't assign a category (the NAs)
+  filter(!is.na(temp_category), !is.na(industry_level)) %>%
+  group_by(temp_category, industry_level) %>%
+  summarise(
+    avg_small_cons = mean(consumption_small, na.rm = TRUE),
+    max_power_cons = max(consumption_power, na.rm = TRUE),
+    count = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(avg_small_cons))
+
+print(summary_task7)
+```
+
+
 ### Task 8
 
 * There are several variables that pull out data by different industry (the `_idx` columns). Create a table for these columns using `select` and the `ends_with` function. Provide two different plots that show of the relations between these variables (you do not need to have all variables in each plot).
 
+```{r}
+# 1. Create a table using select and ends_with
+industry_idx_table <- daily %>%
+  select(date, ends_with("_idx"))
+#ignores
+# 2. Plot 1: Relationship between Manufacturing and Hospitality indices
+ggplot(industry_idx_table, aes(x = manufacturing_idx, y = hospitality_idx)) +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  geom_smooth(method = "lm", color = "darkred") +
+  labs(title = "Relationship between Manufacturing and Hospitality Indices",
+       x = "Manufacturing Index",
+       y = "Hospitality Index") +
+  theme_minimal()
+
+# 3. Plot 2: Time series comparison of all industry indices
+industry_idx_long <- industry_idx_table %>%
+  pivot_longer(cols = ends_with("_idx"), names_to = "Sector", values_to = "Index_Value")
+
+ggplot(industry_idx_long, aes(x = date, y = Index_Value, color = Sector)) +
+  geom_line(alpha = 0.7) +
+  facet_wrap(~Sector, scales = "free_y") +
+  labs(title = "Trends in Industry Sector Indices Over Time",
+       x = "Date",
+       y = "Index Value") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+
 
 ## Objectives
+
+# Tyger - Objectives 1, 2, and 3
 
 ### Objective 1
 
@@ -224,6 +288,7 @@ mean_yday
 
 * According to the paper, the gas crisis occurred between September 2021 until October 2022. Compare this period with the periods before and after on household and industrial consumption. Write a paragraph explaining your findings.
 
+# Anela - Objectives 4 and 5
 
 ### Objective 4
 
@@ -231,12 +296,14 @@ mean_yday
 
 ### Objective 4
 
-* Investigate solar radiation's marginal distribution and also it's relationship with temperature.
+* Investigate solar radiation's marginal distribution and also its relationship with temperature.
 
 
 ### Objective 5
 
 * Use `group_by` to summarize by a new feature of this data set not otherwise discussed in the tasks or objectives. What have you learned with these investigation?
+
+# Christian - Objectives 6 and 7
 
 ### Objective 6
 
