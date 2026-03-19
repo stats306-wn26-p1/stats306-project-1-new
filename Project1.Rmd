@@ -92,11 +92,30 @@ daily %>%
     power_change = (last(consumption_power) - first(consumption_power)) / first(consumption_power)
   )
 ```
+
+```{r}
+#proportion of holidays
+daily %>%
+  summarise(prop_holiday = mean(holiday == TRUE, na.rm = TRUE))
+
+```
+
+```{r}
+daily %>%
+  mutate(year_month = floor_date(date, "month")) %>%
+  group_by(year_month) %>%
+  summarise(median_power = median(consumption_power, na.rm = TRUE)) %>%
+  arrange(median_power)
+```
 ### Task 4
 
 * The original paper aggregated the data to monthly means for each consumption type in `daily` and the `Price` column of `gas` to produce the following image:<br/>
 ![Original consumption by month graph](proj1fig1.png)<br/>
 Produce plots that show the same information that is presented in this plot. Your plots do not have to have the same colors or markings, but we should be able to use them to compare the trends for the three price variables. 
+
+```{r}
+
+```
 
 ### Task 5
 
