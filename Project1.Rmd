@@ -114,43 +114,47 @@ daily %>%
 Produce plots that show the same information that is presented in this plot. Your plots do not have to have the same colors or markings, but we should be able to use them to compare the trends for the three price variables. 
 
 ```{r}
+daily_prices_month <- daily %>%
+  mutate(date_month = floor_date(date, "month")) %>%
+  group_by(date_month) %>%
+  summarise(
+    household_idx = mean(price_households_idx, na.rm = TRUE),
+    industry_idx = mean(price_industry_idx, na.rm = TRUE),
+    .groups = "drop"
+  )
 
-daily |> select(daily$month, daily$small, daily$industry, daily$power) -> daily_month
+gas_price_month <- gas %>%
+  mutate(date_month = floor_date(Date, "month")) %>%
+  group_by(date_month) %>%
+  summarise(
+    ttf_price = mean(Price, na.rm = TRUE),
+    .groups = "drop"
+  )
 
-gas |> select(gas$month, gas$price) -> gas_month
+plot_data <- daily_prices_month %>%
+  left_join(gas_price_month, by = "date_month")
 
-combined <- daily_month %>%
-  left_join(gas_month, by = "month")
 
-scale_factor <- max(combined$small, na.rm = TRUE) / max(combined$price, na.rm = TRUE)
+scale_factor <- 4
 
-ggplot(combined, aes(x = month)) +
-  
-  geom_line(aes(y = price * scale_factor, color = "TTF Price"), size = 1) +
-  
-  geom_line(aes(y = small, color = "Households"), size = 1) +
-  
-  geom_line(aes(y = industry, color = "Industry"), linetype = "dashed", size = 1) +
-  
-
+ggplot(plot_data, aes(x = date_month)) +
+  geom_line(aes(y = ttf_price, color = "Natural gas price TTF"), size = 1) +
+  geom_line(aes(y = household_idx / scale_factor, color = "Natural gas price index for households DE"), size = 1) +
+  geom_line(aes(y = industry_idx / scale_factor, color = "Natural gas price index for industry DE"),
+            linetype = "dashed", size = 1) +
   scale_y_continuous(
-    name = "Consumption",
-    sec.axis = sec_axis(~./scale_factor, name = "Gas Price")
+    name = "Natural gas price TTF (€ MWh⁻¹)",
+    limits = c(0, 375),
+    sec.axis = sec_axis(~ . * scale_factor, name = "Natural gas price indices (2015 = 100)")
   ) +
-  
   scale_color_manual(values = c(
-    "TTF Price" = "pink",
-    "Households" = "lightblue",
-    "Industry" = "lightblue"
+    "Natural gas price TTF" = "lightblue",
+    "Natural gas price index for households DE" = "pink",
+    "Natural gas price index for industry DE" = "pink"
   )) +
-  
-  labs(
-    title = "Natural Gas Consumption and Price Over Time",
-    x = "Date",
-    color = ""
-  ) +
-  
-  theme_minimal()
+  labs(x = "Date", color = NULL) +
+  theme_minimal() +
+  theme(legend.position = "top", legend.direction = "vertical")
 ```
 
 ### Task 5
@@ -278,30 +282,209 @@ ggplot(industry_idx_long, aes(x = date, y = Index_Value, color = Sector)) +
     * A plot of a summary measure such as a conditional mean
     * A plot using `facet_wrap` or `facet_grid`
     * A plot that shows seasonal effects before the crisis (September 2021 until October 2022)
-    
+  
+```{r}
+# 1. Marginal Distribution: Industry Consumption
+ggplot(daily, aes(x = consumption_industry)) +
+  geom_histogram(fill = "steelblue", color = "white", bins = 30) +
+  labs(title = "Distribution of Industrial Gas Consumption",
+       caption = "Figure 1: The distribution shows a slight bimodal tendency, reflecting shifts between high-production periods and crisis-driven reductions.") +
+  theme_minimal()
+
+# 2. Joint Distribution: Temperature vs. Household Consumption
+ggplot(daily, aes(x = temperature, y = consumption_small)) +
+  geom_bin2d(bins = 30) +
+  scale_fill_viridis_c() +
+  labs(title = "Density of Temperature vs. Household Consumption",
+       caption = "Figure 2: There is a strong non-linear negative correlation; as temperature drops below 10°C, household gas demand spikes exponentially.") +
+  theme_minimal()
+
+# 3. Conditional Mean: Average Power Consumption by Weekday
+daily %>%
+  mutate(weekday = wday(date, label = TRUE)) %>%
+  group_by(weekday) %>%
+  summarise(mean_power = mean(consumption_power, na.rm = TRUE)) %>%
+  ggplot(aes(x = weekday, y = mean_power, fill = weekday)) +
+  geom_col() +
+  labs(title = "Mean Power Sector Gas Consumption by Weekday",
+       caption = "Figure 3: Power sector consumption remains relatively stable across the week, with slight dips on weekends when industrial demand typically drops.") +
+  theme_minimal()
+
+# 4. Facet Plot: Industry Sector Indices
+industry_idx_long %>%
+  ggplot(aes(x = Index_Value)) +
+  geom_density(fill = "tomato", alpha = 0.5) +
+  facet_wrap(~Sector, scales = "free") +
+  labs(title = "Density Distributions of Industry Sector Indices",
+       caption = "Figure 4: Different sectors show varying levels of volatility; some are tightly clustered while others show wider variance during the crisis.") +
+  theme_minimal()
+
+# 5. Seasonal Effects (Pre-Crisis to Crisis: Sept 2021 - Oct 2022)
+daily %>%
+  filter(date >= "2021-09-01" & date <= "2022-10-31") %>%
+  ggplot(aes(x = date, y = consumption_small)) +
+  geom_line(color = "darkgreen") +
+  geom_smooth(method = "loess", color = "red") +
+  labs(title = "Seasonal Household Consumption (Sept 2021 - Oct 2022)",
+       caption = "Figure 5: Despite seasonal winter peaks, the 'loess' trend line shows the beginning of structural savings as the crisis deepened in 2022.") +
+  theme_minimal()
+```
+
 
 ### Objective 2
 
 * Compare and contrast holidays and non-holidays for household energy consumption. Select 3 ways of comparing these groups. Provide at least one graph.
 
+```{r}
+# Statistical Summary
+holiday_summary <- daily %>%
+  group_by(holiday) %>%
+  summarise(
+    avg_cons = mean(consumption_small, na.rm = TRUE),
+    med_cons = median(consumption_small, na.rm = TRUE),
+    sd_cons = sd(consumption_small, na.rm = TRUE)
+  )
+
+print(holiday_summary)
+
+# Visual Comparison
+ggplot(daily, aes(x = as.factor(holiday), y = consumption_small, fill = as.factor(holiday))) +
+  geom_boxplot() +
+  labs(
+    title = "Household Consumption: Holidays vs. Normal Days",
+    x = "Is Holiday? (False/True)",
+    y = "Consumption (Small)",
+    fill = "Holiday Status"
+  ) +
+  theme_minimal()
+```
+
+
 ### Objective 3
 
 * According to the paper, the gas crisis occurred between September 2021 until October 2022. Compare this period with the periods before and after on household and industrial consumption. Write a paragraph explaining your findings.
+
+```{r}
+daily_crisis <- daily %>%
+  mutate(period = case_when(
+    date < "2021-09-01" ~ "1. Pre-Crisis",
+    date >= "2021-09-01" & date <= "2022-10-31" ~ "2. Crisis",
+    date > "2022-10-31" ~ "3. Post-Crisis Peak"
+  )) %>%
+  filter(!is.na(period))
+
+# Visualizing the shift in consumption patterns
+ggplot(daily_crisis, aes(x = period, y = consumption_industry, fill = period)) +
+  geom_violin(alpha = 0.7) +
+  geom_boxplot(width = 0.1, color = "black", outlier.shape = NA) +
+  labs(title = "Industrial Gas Consumption Shift Across Crisis Periods",
+       y = "Consumption (Industry)",
+       x = "Time Period") +
+  theme_minimal() +
+  guides(fill = "none")
+```
+
 
 # Anela - Objectives 4 and 5
 
 ### Objective 4
 
-* Explore the [documentation for ggplot](https://ggplot2.tidyverse.org/). Select one geometery and one `stat_` function we have not used before or use an option to a previously used geometry/stat with a new option. Write a short paragraph explaining what the plots show. 
+* Explore the [documentation for ggplot](https://ggplot2.tidyverse.org/). Select one geometery and one `stat_` function we have not used before or use an option to a previously used geometry/stat with a new option. Write a short paragraph explaining what the plots show.
+
+```{r}
+raster_data <- daily %>%
+  mutate(
+    temp_bin = cut(temperature, breaks = 30),
+    month = floor_date(date, "month")
+  ) %>%
+  group_by(month, temp_bin) %>%
+  summarise(avg_consumption = mean(consumption_small, na.rm = TRUE),
+            .groups = "drop")
+ggplot(raster_data, aes(x = month, y = temp_bin, fill = avg_consumption)) +
+  geom_raster() +
+  labs(
+    title = "Heatmap of Household Gas Consumption by Temperature and Time",
+    x = "Month",
+    y = "Temperature Bin",
+    fill = "Avg Consumption"
+  ) +
+  theme_minimal()
+
+#done
+```
+
+```{r}
+ggplot(daily, aes(x = temperature, y = consumption_small)) +
+  stat_summary_bin(fun = mean, bins = 30, geom = "line", color = "blue") +
+  labs(
+    title = "Average Household Gas Consumption by Temperature",
+    x = "Temperature",
+    y = "Average Consumption"
+  ) +
+  theme_minimal()
+```
+
+The first plot uses the geom geom_raster().This will show the average household's consumption of gas through time and temperature. By grouping the data into temperature ranges and months, the heatmap makes it easy to see that gas usage is higher during colder temperatures and winter months.This makes patterns easier to spot compared to a regular scatterplot.
+
+The second plot uses the stat stat_summary_bin() to calculate the average gas consumption for different temperature ranges. It shows a downward trend, meaning gas consumption decreases as temperature increases, which supports the seasonal pattern seen in the first plot.
 
 ### Objective 4
 
-* Investigate solar radiation's marginal distribution and also its relationship with temperature.
+```{r}
+ggplot(daily, aes(x = solar_radiation)) +
+  geom_histogram(bins = 40, ) +
+  labs(
+    title = "Distribution of Solar Radiation",
+    x = "Solar Radiation",
+    y = "Count"
+  ) +
+  theme_minimal()
+```
 
+```{r}
+ggplot(daily, aes(x = temperature, y = solar_radiation)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(se = FALSE) +
+  labs(
+    title = "Solar Radiation vs Temperature",
+    x = "Temperature",
+    y = "Solar Radiation"
+  ) +
+  theme_minimal()
+```
+
+The first plot is a histogram of the distribution of solar radiation, which is right skewed with most values concentrated at lower levels and fewer high radiation days.
+
+The scatter plot shows the relationship between solar radiation vs temperature, which has a positive  relationship indicating that temperatures that are higher are generally associated with higher solar radiation. This also demonstrates the seasonal patterns observed in the data where warmer days are associated with sunnier days,
 
 ### Objective 5
 
 * Use `group_by` to summarize by a new feature of this data set not otherwise discussed in the tasks or objectives. What have you learned with these investigation?
+
+```{r}
+daily %>%
+  mutate(day_of_week = wday(date, label = TRUE)) %>%
+  group_by(day_of_week) %>%
+  summarise(
+    avg_small = mean(consumption_small, na.rm = TRUE),
+    avg_industry = mean(consumption_industry, na.rm = TRUE)
+  )
+
+daily %>%
+  mutate(day_of_week = wday(date, label = TRUE)) %>%
+  group_by(day_of_week) %>%
+  summarise(avg_small = mean(consumption_small, na.rm = TRUE)) %>%
+  ggplot(aes(day_of_week, avg_small)) +
+  geom_col() +
+  labs(
+    title = "Average Household Gas Consumption by Day of Week",
+    x = "Day of Week",
+    y = "Average Consumption"
+  ) +
+  theme_minimal()
+```
+
+When grouping the data by days of the week, average levels of consumption can be compared throughout different days of the week. The results indicate that there is very little variation between the average consumption grouped by different days of the week,  which suggests that household gas usage is driven more by weather and seasonal factors than by daily routines.
 
 # Christian - Objectives 6 and 7
 
